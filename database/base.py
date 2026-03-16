@@ -15,5 +15,12 @@ class BaseDB:
     async def close(self):
         self.client.close()
 
+    async def init_indexes(self):
+        collection = await base_db.get_collection("listings")
+
+        await collection.create_index([
+            ("location", "2dsphere")
+        ])
+
 
 base_db = BaseDB(db_url=config.DB_URL, db_name=config.DB_NAME)
