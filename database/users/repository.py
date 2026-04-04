@@ -45,6 +45,14 @@ class UserRepository:
             "created_at": {"$gte": str(since_timestamp)}
         })
 
+    async def count_users_between(self, start: float, end: float) -> int:
+        collection = await self.base_db.get_collection(self.collection_name)
 
+        return await collection.count_documents({
+            "created_at": {
+                "$gte": str(start),
+                "$lt": str(end)
+            }
+        })
 
 user_repository = UserRepository(base_db)

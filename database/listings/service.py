@@ -1,7 +1,9 @@
 from datetime import datetime, timedelta
 
-from database.listings.models import Listing
 from services.tags.tags_extractor import generate_tags
+from services.geo.maths import haversine_distance
+
+from database.listings.models import Listing
 from database.listings.repository import ListingRepository
 from database.listings.repository import listing_repository
 
@@ -24,17 +26,20 @@ class ListingService:
         """Delete a listing from the database."""
         return await self.listing_repository.delete_listing(listing_id)
 
-    async def get_recent_listings(self, limit: int = 10) -> list[Listing]:
+    async def get_recent_listings(self, limit: int = 10, listing_type: str = "all") -> list[Listing]:
         """Fetch recent listings from the database."""
-        return await self.listing_repository.get_recent_listings(limit)
+        return await self.listing_repository.get_recent_listings(limit, listing_type)
 
-    async def search_listings(self, query: str, limit: int = 20, min_score: int = 1) -> list[Listing]:
+    async def search_listings(self, query: str, latitude: float, longitude: float, listing_type: str = "all",
+                              limit: int = 20,
+                              min_score: int = 1) -> list[Listing]:
         """Search for listings based on a query and tags."""
         tags = set(generate_tags(text=query, top_n=10))
 
         listings = await self.listing_repository.search_by_tags(
             query_tags=tags,
-            limit=limit
+            limit=limit,
+            listing_type=listing_type
         )
 
         results = []
@@ -43,22 +48,33 @@ class ListingService:
             score = len(tags & listing_tags)
 
             if score >= min_score:
+                coords = listing.location.get("coordinates", [0, 0])
+                listing_lon, listing_lat = coords
+
+                distance = haversine_distance(
+                    latitude, longitude,
+                    listing_lat, listing_lon
+                )
+
                 listing.score = score
+                listing.distance = distance
                 results.append(listing)
 
-        results.sort(key=lambda x: x.score, reverse=True)
+        results.sort(key=lambda x: (-x.score, x.distance))
         return results
 
     async def get_nearest_listings(
             self,
             latitude: float,
             longitude: float,
+            listing_type: str = "all",
             limit: int = 20
     ) -> list[Listing]:
 
         return await self.listing_repository.get_nearest_listings(
             latitude=latitude,
             longitude=longitude,
+            listing_type=listing_type,
             limit=limit
         )
 
@@ -105,6 +121,35 @@ class ListingService:
                 "month": finished_month
             }
         }
+
+    async def get_listing_statistics_by_month(self) -> list:
+        """Return last 12 months listing stats."""
+
+        now = datetime.utcnow()
+        result = []
+
+        for i in range(11, -1, -1):
+            start = datetime(now.year, now.month, 1) - timedelta(days=30 * i)
+            end = datetime(start.year, start.month, 1) + timedelta(days=32)
+            end = datetime(end.year, end.month, 1)
+
+            created = await self.listing_repository.count_created_between(
+                start.timestamp(),
+                end.timestamp()
+            )
+
+            finished = await self.listing_repository.count_finished_between(
+                start.timestamp(),
+                end.timestamp()
+            )
+
+            result.append({
+                "month": start.strftime("%Y-%m"),
+                "created": created,
+                "finished": finished
+            })
+
+        return result
 
 
 listing_service = ListingService(listing_repository)

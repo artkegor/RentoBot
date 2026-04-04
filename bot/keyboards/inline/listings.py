@@ -57,6 +57,29 @@ def confirm_listing_keyboard() -> InlineKeyboardMarkup:
     return keyboard
 
 
+def search_type_keyboard(prefix: str):
+    keyboard = InlineKeyboardMarkup(row_width=1)
+    keyboard.add(
+        InlineKeyboardButton(
+            text="Продажа 🛒",
+            callback_data=f"{prefix}:sale"
+        ),
+        InlineKeyboardButton(
+            text="Аренда 🏠",
+            callback_data=f"{prefix}:rent"
+        ),
+        InlineKeyboardButton(
+            text="Все 📋",
+            callback_data=f"{prefix}:all"
+        ),
+        InlineKeyboardButton(
+            text="⬅️ В меню",
+            callback_data="menu:main_menu"
+        )
+    )
+    return keyboard
+
+
 def listings_keyboard(page: int, total: int, key: str, listing_id: int = None, user_id: int = None,
                       is_active: bool = False) -> InlineKeyboardMarkup:
     """Create an inline keyboard for navigating through listings pages."""
@@ -146,23 +169,4 @@ def edit_listing_keyboard(listing_type: str) -> InlineKeyboardMarkup:
     for i in range(0, len(buttons), 2):
         keyboard.row(*buttons[i:i + 2])
 
-    return keyboard
-
-
-def item_type_keyboard() -> InlineKeyboardMarkup:
-    """Create an inline keyboard for selecting item type."""
-    keyboard = InlineKeyboardMarkup(row_width=2)
-    product_button = InlineKeyboardButton(
-        text="Товар 🛍️",
-        callback_data='listings:item:product'
-    )
-    service_button = InlineKeyboardButton(
-        text="Услуга 🛠️",
-        callback_data='listings:item:service'
-    )
-    back_button = InlineKeyboardButton(
-        text="🔙 Назад",
-        callback_data='menu:main_menu'
-    )
-    keyboard.add(product_button, service_button, back_button)
     return keyboard

@@ -43,5 +43,15 @@ class LogRepository:
         logs_data = await cursor.to_list(length=None)
         return [Log(**log_data) for log_data in logs_data]
 
+    async def count_action_between(self, action: str, start: float, end: float) -> int:
+        collection = await self.get_collection()
+
+        return await collection.count_documents({
+            "action": action,
+            "timestamp": {
+                "$gte": str(start),
+                "$lt": str(end)
+            }
+        })
 
 log_repository = LogRepository(base_db)

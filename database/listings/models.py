@@ -13,8 +13,7 @@ class Listing(BaseModel):
     title: str = Field(..., description="Заголовок объявления")
     description: str = Field(..., description="Описание объявления")
 
-    item_type: str = Field(..., description="Тип объявления: товар или услуга")
-    transaction_type: str = Field(..., description="Тип транзакции: продажа или аренла")
+    transaction_type: str = Field(..., description="Тип транзакции: продажа или аренда")
 
     is_active: bool = Field(..., description="Статус объявления: активно (True) или продано/арендовано (False)")
 
@@ -32,6 +31,7 @@ class Listing(BaseModel):
 
     place: str = Field(..., description="Текстовое описание локации")
     location: dict = Field(..., description="GeoJSON location")
+    distance: Optional[float] = None
 
     photos: List[str] = Field(
         default_factory=list,

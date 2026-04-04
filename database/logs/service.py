@@ -53,4 +53,36 @@ class LogService:
         """Fetch logs by user ID and action type."""
         return await self.log_repository.get_log_by_user_and_action(user_id, action)
 
+    async def get_action_statistics_by_month(self) -> list:
+        """Return last 12 months logs stats."""
+
+        now = datetime.utcnow()
+        result = []
+
+        for i in range(11, -1, -1):
+            start = datetime(now.year, now.month, 1) - timedelta(days=30 * i)
+            end = datetime(start.year, start.month, 1) + timedelta(days=32)
+            end = datetime(end.year, end.month, 1)
+
+            search = await self.log_repository.count_action_between(
+                "search_listings",
+                start.timestamp(),
+                end.timestamp()
+            )
+
+            contact = await self.log_repository.count_action_between(
+                "contact_seller",
+                start.timestamp(),
+                end.timestamp()
+            )
+
+            result.append({
+                "month": start.strftime("%Y-%m"),
+                "search": search,
+                "contact": contact
+            })
+
+        return result
+
+
 log_service = LogService(log_repository)

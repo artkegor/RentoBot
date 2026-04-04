@@ -4,7 +4,7 @@ from datetime import datetime
 from bot.bot import bot
 from bot.utils.states import bot_states
 from bot.keyboards.inline.menu import back_to_menu_keyboard
-from bot.keyboards.inline.listings import edit_listing_keyboard, item_type_keyboard
+from bot.keyboards.inline.listings import edit_listing_keyboard
 from bot.utils.memory import form_memory
 
 from database.users.service import user_service
@@ -18,22 +18,10 @@ from services.tags.tags_extractor import generate_tags
 @bot.callback_query_handler(func=lambda call: call.data == 'listings:create')
 async def create_listing_callback_handler(call):
     """Handle the 'create listing' callback query."""
-    await bot.edit_message_text(
-        chat_id=call.message.chat.id,
-        message_id=call.message.message_id,
-        text="📝 Выберите тип объявления (товар или услуга):",
-        reply_markup=item_type_keyboard()
-    )
-
-
-@bot.callback_query_handler(
-    func=lambda call: call.data == 'listings:item:product' or call.data == 'listings:item:service')
-async def create_listing_callback_handler(call):
-    """Handle the 'create listing' callback query."""
     sent = await bot.edit_message_text(
         chat_id=call.message.chat.id,
         message_id=call.message.message_id,
-        text="1️⃣ Введите название товара/услуги:",
+        text="1️⃣ Введите название товара:",
         reply_markup=back_to_menu_keyboard()
     )
     form_memory.set_answer(
@@ -42,20 +30,6 @@ async def create_listing_callback_handler(call):
         question='last_bot_message_id',
         answer=sent.message_id
     )
-    if call.data == 'listings:item:product':
-        form_memory.set_answer(
-            user_id=call.message.chat.id,
-            form='create_listing',
-            question='item_type',
-            answer='product'
-        )
-    else:
-        form_memory.set_answer(
-            user_id=call.message.chat.id,
-            form='create_listing',
-            question='item_type',
-            answer='service'
-        )
     await bot.set_state(
         chat_id=call.message.chat.id,
         user_id=call.message.chat.id,
@@ -131,7 +105,6 @@ async def confirm_listing_callback_handler(call):
         title=data.get('listing_title'),
         description=data.get('listing_description'),
 
-        item_type=data.get('item_type'),
         transaction_type=listing_type,
         is_active=True,
 

@@ -77,5 +77,28 @@ class UserService:
             return updated_user
         return None
 
+    async def get_registration_statistics_by_month(self) -> list:
+        """Return last 12 months user registrations."""
+
+        now = datetime.utcnow()
+        result = []
+
+        for i in range(11, -1, -1):
+            start = datetime(now.year, now.month, 1) - timedelta(days=30 * i)
+            end = datetime(start.year, start.month, 1) + timedelta(days=32)
+            end = datetime(end.year, end.month, 1)
+
+            count = await self.user_repository.count_users_between(
+                start.timestamp(),
+                end.timestamp()
+            )
+
+            result.append({
+                "month": start.strftime("%Y-%m"),
+                "count": count
+            })
+
+        return result
+
 
 user_service = UserService(user_repository)

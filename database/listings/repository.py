@@ -42,23 +42,32 @@ class ListingRepository:
         result = await collection.delete_one({"listing_id": listing_id})
         return result.deleted_count > 0
 
-    async def get_recent_listings(self, limit: int = 10) -> list[Listing]:
+    async def get_recent_listings(self, limit: int = 10, listing_type: str = "all") -> list[Listing]:
         """Fetch recent listings from the database."""
         collection = await self.get_collection()
 
-        cursor = (
-            collection
-            .find({'is_active': True})
-            .sort("_id", -1)
-            .limit(limit)
-        )
-
-        return [Listing(**doc) async for doc in cursor]
+        if listing_type in ["sale", "rent"]:
+            cursor = (
+                collection
+                .find({'is_active': True, 'transaction_type': listing_type})
+                .sort("_id", -1)
+                .limit(limit)
+            )
+            return [Listing(**doc) async for doc in cursor]
+        else:
+            cursor = (
+                collection
+                .find({'is_active': True})
+                .sort("_id", -1)
+                .limit(limit)
+            )
+            return [Listing(**doc) async for doc in cursor]
 
     async def get_nearest_listings(
             self,
             latitude: float,
             longitude: float,
+            listing_type: str = "all",
             limit: int = 20,
             max_distance_km: float = 50
     ) -> list[Listing]:
@@ -73,9 +82,11 @@ class ListingRepository:
                         "coordinates": [longitude, latitude]
                     },
                     "distanceField": "distance",
+                    "distanceMultiplier": 0.001,
                     "maxDistance": max_distance_km * 1000,
                     "spherical": True,
-                    "query": {"is_active": True}
+                    "query": {"is_active": True} if listing_type == "all" else {"is_active": True,
+                                                                                "transaction_type": listing_type}
                 }
             },
             {"$limit": limit}
@@ -89,13 +100,15 @@ class ListingRepository:
 
         return listings
 
-    async def search_by_tags(self, query_tags: Iterable[str], limit: int = 20) -> list[Listing]:
+    async def search_by_tags(self, query_tags: Iterable[str], limit: int = 20, listing_type: str = "all") -> list[
+        Listing]:
         """
         Mongo search using $in on tags.
         """
         collection = await self.get_collection()
         cursor = collection.find(
-            {"tags": {"$in": list(query_tags)}, "is_active": True},
+            {"tags": {"$in": list(query_tags)}, "is_active": True} if listing_type == "all" else {
+                "tags": {"$in": list(query_tags)}, "is_active": True, "transaction_type": listing_type},
             limit=limit
         )
 
@@ -113,7 +126,6 @@ class ListingRepository:
             "created_at": {"$gte": str(since_timestamp)}
         })
 
-
     async def count_finished_since(self, since_timestamp: float) -> int:
         """Count finished listings since timestamp."""
         collection = await self.get_collection()
@@ -122,6 +134,25 @@ class ListingRepository:
             "finished_at": {"$gte": str(since_timestamp)}
         })
 
+    async def count_created_between(self, start: float, end: float) -> int:
+        collection = await self.get_collection()
+
+        return await collection.count_documents({
+            "created_at": {
+                "$gte": str(start),
+                "$lt": str(end)
+            }
+        })
+
+    async def count_finished_between(self, start: float, end: float) -> int:
+        collection = await self.get_collection()
+
+        return await collection.count_documents({
+            "finished_at": {
+                "$gte": str(start),
+                "$lt": str(end)
+            }
+        })
 
 
 listing_repository = ListingRepository(base_db)
